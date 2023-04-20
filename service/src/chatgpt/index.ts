@@ -29,56 +29,100 @@ const disableDebug: boolean = process.env.OPENAI_API_DISABLE_DEBUG === 'true'
 let apiModel: ApiModel
 const model = isNotEmptyString(process.env.OPENAI_API_MODEL) ? process.env.OPENAI_API_MODEL : 'gpt-3.5-turbo'
 
-if (!isNotEmptyString(process.env.OPENAI_API_KEY) && !isNotEmptyString(process.env.OPENAI_ACCESS_TOKEN))
-  throw new Error('Missing OPENAI_API_KEY or OPENAI_ACCESS_TOKEN environment variable')
+// if (!isNotEmptyString(process.env.OPENAI_API_KEY) && !isNotEmptyString(process.env.OPENAI_ACCESS_TOKEN))
+//   throw new Error('Missing OPENAI_API_KEY or OPENAI_ACCESS_TOKEN environment variable')
 
-let api: ChatGPTAPI | ChatGPTUnofficialProxyAPI
+if (!isNotEmptyString(process.env.OPENAI_API_KEYs)){
+  throw new Error('Missing OPENAI_API_KEYs or OPENAI_ACCESS_TOKEN environment variable')
+}
+
+const OPENAI_API_KEY_ARR:string[] = JSON.parse(process.env.OPENAI_API_KEYs)
+function getRandomKey(){
+  const index = Math.floor((Math.random()*OPENAI_API_KEY_ARR.length));
+  const OPENAI_API_KEY = OPENAI_API_KEY_ARR[index]
+  console.log(OPENAI_API_KEY)
+  return  OPENAI_API_KEY
+}
+// let api: ChatGPTAPI | ChatGPTUnofficialProxyAPI
+apiModel = 'ChatGPTAPI'
+function getApi(){
+  let api: ChatGPTAPI | ChatGPTUnofficialProxyAPI
+  const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
+  const OPENAI_API_KEY = getRandomKey()
+  const options: ChatGPTAPIOptions = {
+    apiKey:OPENAI_API_KEY,
+    completionParams: { model },
+    debug: !disableDebug,
+  }
+
+  // increase max token limit if use gpt-4
+  if (model.toLowerCase().includes('gpt-4')) {
+    // if use 32k model
+    if (model.toLowerCase().includes('32k')) {
+      options.maxModelTokens = 32768
+      options.maxResponseTokens = 8192
+    }
+    else {
+      options.maxModelTokens = 8192
+      options.maxResponseTokens = 2048
+    }
+  }
+
+  if (isNotEmptyString(OPENAI_API_BASE_URL))
+    options.apiBaseUrl = `${OPENAI_API_BASE_URL}/v1`
+
+  setupProxy(options)
+
+  api = new ChatGPTAPI({ ...options })
+  // apiModel = 'ChatGPTAPI'
+  return api
+}
 
 (async () => {
   // More Info: https://github.com/transitive-bullshit/chatgpt-api
 
   if (isNotEmptyString(process.env.OPENAI_API_KEY)) {
-    const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
+    // const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
 
-    const options: ChatGPTAPIOptions = {
-      apiKey: process.env.OPENAI_API_KEY,
-      completionParams: { model },
-      debug: !disableDebug,
-    }
+    // const options: ChatGPTAPIOptions = {
+    //   apiKey: process.env.OPENAI_API_KEY,
+    //   completionParams: { model },
+    //   debug: !disableDebug,
+    // }
 
-    // increase max token limit if use gpt-4
-    if (model.toLowerCase().includes('gpt-4')) {
-      // if use 32k model
-      if (model.toLowerCase().includes('32k')) {
-        options.maxModelTokens = 32768
-        options.maxResponseTokens = 8192
-      }
-      else {
-        options.maxModelTokens = 8192
-        options.maxResponseTokens = 2048
-      }
-    }
+    // // increase max token limit if use gpt-4
+    // if (model.toLowerCase().includes('gpt-4')) {
+    //   // if use 32k model
+    //   if (model.toLowerCase().includes('32k')) {
+    //     options.maxModelTokens = 32768
+    //     options.maxResponseTokens = 8192
+    //   }
+    //   else {
+    //     options.maxModelTokens = 8192
+    //     options.maxResponseTokens = 2048
+    //   }
+    // }
 
-    if (isNotEmptyString(OPENAI_API_BASE_URL))
-      options.apiBaseUrl = `${OPENAI_API_BASE_URL}/v1`
+    // if (isNotEmptyString(OPENAI_API_BASE_URL))
+    //   options.apiBaseUrl = `${OPENAI_API_BASE_URL}/v1`
 
-    setupProxy(options)
+    // setupProxy(options)
 
-    api = new ChatGPTAPI({ ...options })
-    apiModel = 'ChatGPTAPI'
+    // api = new ChatGPTAPI({ ...options })
+    // apiModel = 'ChatGPTAPI'
   }
   else {
-    const options: ChatGPTUnofficialProxyAPIOptions = {
-      accessToken: process.env.OPENAI_ACCESS_TOKEN,
-      apiReverseProxyUrl: isNotEmptyString(process.env.API_REVERSE_PROXY) ? process.env.API_REVERSE_PROXY : 'https://bypass.churchless.tech/api/conversation',
-      model,
-      debug: !disableDebug,
-    }
+    // const options: ChatGPTUnofficialProxyAPIOptions = {
+    //   accessToken: process.env.OPENAI_ACCESS_TOKEN,
+    //   apiReverseProxyUrl: isNotEmptyString(process.env.API_REVERSE_PROXY) ? process.env.API_REVERSE_PROXY : 'https://bypass.churchless.tech/api/conversation',
+    //   model,
+    //   debug: !disableDebug,
+    // }
 
-    setupProxy(options)
+    // setupProxy(options)
 
-    api = new ChatGPTUnofficialProxyAPI({ ...options })
-    apiModel = 'ChatGPTUnofficialProxyAPI'
+    // api = new ChatGPTUnofficialProxyAPI({ ...options })
+    // apiModel = 'ChatGPTUnofficialProxyAPI'
   }
 })()
 
@@ -100,7 +144,7 @@ async function chatReplyProcess(options: RequestOptions) {
         options = { ...lastContext }
     }
 
-    const response = await api.sendMessage(message, {
+    const response = await  getApi().sendMessage(message, {
       ...options,
       onProgress: (partialResponse) => {
         process?.(partialResponse)
@@ -119,7 +163,8 @@ async function chatReplyProcess(options: RequestOptions) {
 }
 
 async function fetchUsage() {
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+  // const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+  const OPENAI_API_KEY = getRandomKey()
   const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
 
   if (!isNotEmptyString(OPENAI_API_KEY))
