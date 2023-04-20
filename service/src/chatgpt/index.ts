@@ -32,11 +32,11 @@ const model = isNotEmptyString(process.env.OPENAI_API_MODEL) ? process.env.OPENA
 // if (!isNotEmptyString(process.env.OPENAI_API_KEY) && !isNotEmptyString(process.env.OPENAI_ACCESS_TOKEN))
 //   throw new Error('Missing OPENAI_API_KEY or OPENAI_ACCESS_TOKEN environment variable')
 
-if (!isNotEmptyString(process.env.OPENAI_API_KEYs)){
-  throw new Error('Missing OPENAI_API_KEYs or OPENAI_ACCESS_TOKEN environment variable')
+if (!isNotEmptyString(process.env.OPENAI_API_KEYS)){
+  throw new Error('Missing OPENAI_API_KEYS or OPENAI_ACCESS_TOKEN environment variable')
 }
 
-const OPENAI_API_KEY_ARR:string[] = JSON.parse(process.env.OPENAI_API_KEYs)
+const OPENAI_API_KEY_ARR:string[] = JSON.parse(process.env.OPENAI_API_KEYS)
 function getRandomKey(){
   const index = Math.floor((Math.random()*OPENAI_API_KEY_ARR.length));
   const OPENAI_API_KEY = OPENAI_API_KEY_ARR[index]
